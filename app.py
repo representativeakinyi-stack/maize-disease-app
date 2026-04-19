@@ -1,45 +1,38 @@
 from flask import Flask, render_template, request
-import os
 import numpy as np
+import os
 from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing import image
 
 app = Flask(__name__)
 
-from tensorflow.keras.models import load_model
-model = load_model("model.h5")
+# Load trained model
+model = load_model("maize_disease_model.h5")
 
-# Classes (match your dataset folders)
-classes = ['blight', 'common_rust', 'gray_leaf_spot', 'healthy']
+# Class names (must match training order)
+classes = ['common_rust', 'gray_leaf_spot', 'healthy', 'northern_leaf_blight']
 
-UPLOAD_FOLDER = "uploads"
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+# Home page
+@app.route('/')
+def home():
+    return render_template('index.html')
 
-@app.route('/', methods=['GET', 'POST'])
-def index():
-    prediction = None
+# Prediction route
+@app.route('/predict', methods=['POST'])
+def predict():
+    file = request.files['file']
+    
+    filepath = os.path.join('static/uploads', file.filename)
+    file.save(filepath)
 
-    if request.method == 'POST':
-        file = request.files['file']
+    img = image.load_img(filepath, target_size=(224, 224))
+    img_array = image.img_to_array(img)
+    img_array = np.expand_dims(img_array, axis=0) / 255.0
 
-        if file:
-            filepath = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
-            file.save(filepath)
+    prediction = model.predict(img_array)
+    result = classes[np.argmax(prediction)]
 
-            # Process image
-            img = image.load_img(filepath, target_size=(128, 128))
-            img_array = image.img_to_array(img)
-            img_array = np.expand_dims(img_array, axis=0)
-            img_array = img_array / 255.0
+    return render_template('index.html', prediction=result, image_path=filepath)
 
-            # Predict
-            pred = model.predict(img_array)
-            result = classes[np.argmax(pred)]
-
-            prediction = result
-
-    return render_template('index.html', prediction=prediction)
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     app.run(debug=True)
