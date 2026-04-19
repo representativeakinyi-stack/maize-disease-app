@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Maize Disease Detection</title>
+</head>
+<body>
+
+    <h2>Upload Maize Leaf Image</h2>
+
+    <form action="/" method="post" enctype="multipart/form-data">
+        <input type="file" name="file">
+        <br><br>
+        <input type="submit" value="Predict">
+    </form>
+
+    {% if prediction %}
+        <h3>Prediction: {{ prediction }}</h3>
+    {% endif %}
+
+</body>
+</html>
