@@ -6,7 +6,7 @@ from PIL import Image
 app = Flask(__name__)
 
 # Load trained model
-model = tf.keras.models.load_model("model.h5")
+model = tf.keras.models.load_model("model.h5", compile=False)
 
 # Class labels (must match training order)
 classes = ["Healthy", "Blight", "Common Rust", "Gray Leaf Spot"]
