@@ -1,89 +1,46 @@
-import gdown
-import os
-if not os.path.exists("model.h5"):
-    url = "https://drive.google.com/uc?id=1we9Br_tUqaTtIxYXS5cjhX7GU7OdKkxp"
-    gdown.download(url, "model.h5", quiet=False)
 from flask import Flask, render_template, request
 import numpy as np
-import os
-from tensorflow.keras.models import load_model
-from tensorflow.keras.preprocessing import image
+import tensorflow as tf
+from PIL import Image
 
 app = Flask(__name__)
 
 # Load trained model
-model = load_model("maize_disease_model.h5")
+model = tf.keras.models.load_model("model.h5")
 
-# Class names (must match training order)
-classes = ['common_rust', 'gray_leaf_spot', 'healthy', 'northern_leaf_blight']
+# Class labels (must match training order)
+classes = ["Healthy", "Blight", "Common Rust", "Gray Leaf Spot"]
 
-# Home page
+# Home route
 @app.route('/')
 def home():
-    return render_template('index.html')
+    return render_template("index.html")
 
-# Prediction route
+# Predict route
 @app.route('/predict', methods=['POST'])
 def predict():
-    file = request.files['file']
-    
-    filepath = os.path.join('static/uploads', file.filename)
-    file.save(filepath)
+    file = request.files.get('file')
 
-    img = image.load_img(filepath, target_size=(224, 224))
-    img_array = image.img_to_array(img)
-    img_array = np.expand_dims(img_array, axis=0) / 255.0
+    if file is None or file.filename == '':
+        return render_template("index.html", prediction="No image uploaded")
 
-    prediction = model.predict(img_array)
-    result = classes[np.argmax(prediction)]
+    # Open image
+    img = Image.open(file).convert("RGB")
 
-    return render_template('index.html', prediction=result, image_path=filepath)
+    # IMPORTANT: must match training size
+    img = img.resize((128, 128))
+
+    # Convert to array and normalize
+    img = np.array(img) / 255.0
+
+    # Expand dims for model
+    img = np.expand_dims(img, axis=0)
+
+    # Prediction
+    prediction = model.predict(img)
+    result = np.argmax(prediction)
+
+    return render_template("index.html", prediction=classes[result])
 
 if __name__ == "__main__":
-=======
-from flask import Flask, render_template, request
-import os
-import numpy as np
-from tensorflow.keras.models import load_model
-from tensorflow.keras.preprocessing import image
-
-app = Flask(__name__)
-
-from tensorflow.keras.models import load_model
-model = load_model("model.h5")
-
-# Classes (match your dataset folders)
-classes = ['blight', 'common_rust', 'gray_leaf_spot', 'healthy']
-
-UPLOAD_FOLDER = "uploads"
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-
-@app.route('/', methods=['GET', 'POST'])
-def index():
-    prediction = None
-
-    if request.method == 'POST':
-        file = request.files['file']
-
-        if file:
-            filepath = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
-            file.save(filepath)
-
-            # Process image
-            img = image.load_img(filepath, target_size=(128, 128))
-            img_array = image.img_to_array(img)
-            img_array = np.expand_dims(img_array, axis=0)
-            img_array = img_array / 255.0
-
-            # Predict
-            pred = model.predict(img_array)
-            result = classes[np.argmax(pred)]
-
-            prediction = result
-
-    return render_template('index.html', prediction=prediction)
-
-if __name__ == '__main__':
->>>>>>> 00b301e (initial commit with CNN project)
     app.run(debug=True)
