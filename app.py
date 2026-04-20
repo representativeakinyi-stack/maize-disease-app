@@ -1,3 +1,8 @@
+import gdown
+import os
+if not os.path.exists("model.h5"):
+    url = "https://drive.google.com/uc?id=1we9Br_tUqaTtIxYXS5cjhX7GU7OdKkxp"
+    gdown.download(url, "model.h5", quiet=False)
 from flask import Flask, render_template, request
 import numpy as np
 import os
