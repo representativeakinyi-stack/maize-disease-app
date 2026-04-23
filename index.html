@@ -12,7 +12,7 @@
 
         .box {
             background: white;
-            width: 400px;
+            width: 420px;
             margin: auto;
             padding: 30px;
             border-radius: 10px;
@@ -42,8 +42,20 @@
 
         .result {
             margin-top: 20px;
-            font-size: 20px;
+            font-size: 18px;
             color: blue;
+        }
+
+        .confidence {
+            margin-top: 10px;
+            font-size: 16px;
+            color: black;
+        }
+
+        img {
+            margin-top: 15px;
+            width: 250px;
+            border-radius: 10px;
         }
     </style>
 </head>
@@ -52,27 +64,19 @@
 
 <div class="box">
 
-    <h2>Upload Maize Leaf Image</h2>
+    <h2>Maize Disease Detection</h2>
 
-    <!-- IMPORTANT: POST + file name must match Flask -->
-   <form action="/predict" method="POST" enctype="multipart/form-data">
-    <input type="file" name="file" required>
-    <button type="submit">Predict</button>
-</form>
-
+    <form action="/predict" method="POST" enctype="multipart/form-data">
         <input type="file" name="file" required>
         <br>
-
         <button type="submit">Predict</button>
-
     </form>
 
-    <!-- Prediction output -->
     {% if prediction %}
-        <div class="result">
-            Prediction: <b>{{ prediction }}</b>
-        </div>
-    {% endif %}
+    <h2>Prediction: {{ prediction }}</h2>
+    <h3>Confidence: {{ confidence }}%</h3>
+    <img src="{{ image }}" width="300">
+{% endif %}
 
 </div>
 

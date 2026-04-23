@@ -2,14 +2,24 @@ from flask import Flask, render_template, request
 import numpy as np
 import tensorflow as tf
 from PIL import Image
+import os
+import uuid
 
 app = Flask(__name__)
+
+# Ensure static folder exists
+os.makedirs("static", exist_ok=True)
 
 # Load trained model
 model = tf.keras.models.load_model("model.h5", compile=False)
 
-# Class labels (must match training order)
-classes = ["Healthy", "Blight", "Common Rust", "Gray Leaf Spot"]
+# Class labels (MUST match training order)
+classes = [
+    "common_rust",
+    "gray_leaf_spot",
+    "healthy",
+    "northern_leaf_blight"
+]
 
 # Home route
 @app.route('/')
@@ -19,28 +29,35 @@ def home():
 # Predict route
 @app.route('/predict', methods=['POST'])
 def predict():
-    file = request.files.get('file')
+    file = request.files['file']
 
-    if file is None or file.filename == '':
-        return render_template("index.html", prediction="No image uploaded")
+    # Create unique filename (prevents overwriting)
+    filename = str(uuid.uuid4()) + ".jpg"
+    filepath = os.path.join("static", filename)
 
-    # Open image
-    img = Image.open(file).convert("RGB")
+    file.save(filepath)
 
-    # IMPORTANT: must match training size
+    # Load and preprocess image
+    img = Image.open(filepath).convert('RGB')
     img = img.resize((128, 128))
 
-    # Convert to array and normalize
-    img = np.array(img) / 255.0
-
-    # Expand dims for model
-    img = np.expand_dims(img, axis=0)
+    img_array = np.array(img) / 255.0
+    img_array = np.expand_dims(img_array, axis=0)
 
     # Prediction
-    prediction = model.predict(img)
-    result = np.argmax(prediction)
+    prediction = model.predict(img_array)
 
-    return render_template("index.html", prediction=classes[result])
+    predicted_class = classes[np.argmax(prediction)]
+    confidence = float(np.max(prediction) * 100)
+
+    return render_template(
+        "index.html",
+        prediction=predicted_class,
+        confidence=f"{confidence:.2f}",
+        image=filepath
+    )
 
 if __name__ == "__main__":
     app.run(debug=True)
+    if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000)
