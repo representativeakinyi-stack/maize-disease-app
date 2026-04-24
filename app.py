@@ -59,3 +59,7 @@ def predict():
 if __name__ == "__main__":
     print("APP STARTING...")
     app.run(host="0.0.0.0", port=5000)
+    # model = tf.keras.models.load_model("model.h5", compile=False)
+model = None
+if model is None:
+    return "Model not loaded"
