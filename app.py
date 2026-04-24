@@ -4,23 +4,41 @@ import tensorflow as tf
 from PIL import Image
 import os
 import uuid
+import gdown
 
 app = Flask(__name__)
 
-# Ensure static folder exists
 os.makedirs("static", exist_ok=True)
 
-# Global model (lazy loaded)
+# -----------------------------
+# GOOGLE DRIVE MODEL DOWNLOAD
+# -----------------------------
+MODEL_PATH = "model.h5"
+
+FILE_ID = "18o5ZyP1Pz_3ENbGoZAyoveyWM89qaNsX"
+
+def download_model():
+    if not os.path.exists(MODEL_PATH):
+        print("Downloading model from Google Drive...")
+        url = f"https://drive.google.com/uc?id={FILE_ID}"
+        gdown.download(url, MODEL_PATH, quiet=False)
+        print("Model downloaded successfully!")
+
+# -----------------------------
+# SAFE MODEL LOADING
+# -----------------------------
 model = None
 
 def load_model():
     global model
     if model is None:
-        model = tf.keras.models.load_model("model.h5", compile=False)
+        download_model()
+        model = tf.keras.models.load_model(MODEL_PATH, compile=False)
     return model
 
-
-# Class labels (must match training order)
+# -----------------------------
+# CLASSES
+# -----------------------------
 classes = [
     "common_rust",
     "gray_leaf_spot",
@@ -28,58 +46,45 @@ classes = [
     "northern_leaf_blight"
 ]
 
-
-# Home page
+# -----------------------------
+# ROUTES
+# -----------------------------
 @app.route('/')
 def home():
     return render_template("index.html")
 
 
-# Prediction route
 @app.route('/predict', methods=['POST'])
 def predict():
-    try:
-        model = load_model()
+    model = load_model()
 
-        # Validate file upload
-        if 'file' not in request.files:
-            return "No file uploaded"
+    if 'file' not in request.files:
+        return "No file uploaded"
 
-        file = request.files['file']
+    file = request.files['file']
 
-        if file.filename == '':
-            return "No file selected"
+    filename = str(uuid.uuid4()) + ".jpg"
+    filepath = os.path.join("static", filename)
+    file.save(filepath)
 
-        # Save image safely
-        filename = str(uuid.uuid4()) + ".jpg"
-        filepath = os.path.join("static", filename)
-        file.save(filepath)
+    img = Image.open(filepath).convert('RGB')
+    img = img.resize((128, 128))
 
-        # Preprocess image
-        img = Image.open(filepath).convert('RGB')
-        img = img.resize((128, 128))
+    img_array = np.array(img) / 255.0
+    img_array = np.expand_dims(img_array, axis=0)
 
-        img_array = np.array(img) / 255.0
-        img_array = np.expand_dims(img_array, axis=0)
+    prediction = model.predict(img_array)
 
-        # Predict
-        prediction = model.predict(img_array)
+    predicted_class = classes[np.argmax(prediction)]
+    confidence = float(np.max(prediction) * 100)
 
-        predicted_class = classes[np.argmax(prediction)]
-        confidence = float(np.max(prediction) * 100)
-
-        return render_template(
-            "index.html",
-            prediction=predicted_class,
-            confidence=f"{confidence:.2f}",
-            image=filepath
-        )
-
-    except Exception as e:
-        print("ERROR:", e)
-        return f"Prediction error: {str(e)}"
+    return render_template(
+        "index.html",
+        prediction=predicted_class,
+        confidence=f"{confidence:.2f}",
+        image=filepath
+    )
 
 
-# Railway / Gunicorn entry point
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
