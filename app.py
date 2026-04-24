@@ -4,45 +4,37 @@ import tensorflow as tf
 from PIL import Image
 import os
 import uuid
-import gdown
 
 app = Flask(__name__)
 
 os.makedirs("static", exist_ok=True)
 
-# -----------------------------
-# GOOGLE DRIVE MODEL DOWNLOAD
-# -----------------------------
+# -----------------------
+# MODEL PATH
+# -----------------------
 MODEL_PATH = "model.h5"
-
-FILE_ID = "18o5ZyP1Pz_3ENbGoZAyoveyWM89qaNsX"
-
-def download_model():
-    if not os.path.exists(MODEL_PATH):
-        print("Downloading model from Google Drive...")
-        url = f"https://drive.google.com/uc?id={FILE_ID}"
-        gdown.download(url, MODEL_PATH, quiet=False)
-        print("Model downloaded successfully!")
-
-# -----------------------------
-# SAFE MODEL LOADING
-# -----------------------------
 model = None
+
 
 def load_model():
     global model
     if model is None:
-        download_model()
-       model = tf.keras.models.load_model(
-    MODEL_PATH,
-    compile=False,
-    custom_objects={"InputLayer": tf.keras.layers.InputLayer}
-)
+        try:
+            model = tf.keras.models.load_model(
+                MODEL_PATH,
+                compile=False,
+                custom_objects={}
+            )
+            print("MODEL LOADED SUCCESSFULLY")
+        except Exception as e:
+            print("MODEL LOAD ERROR:", e)
+            model = None
     return model
 
-# -----------------------------
+
+# -----------------------
 # CLASSES
-# -----------------------------
+# -----------------------
 classes = [
     "common_rust",
     "gray_leaf_spot",
@@ -50,9 +42,10 @@ classes = [
     "northern_leaf_blight"
 ]
 
-# -----------------------------
+
+# -----------------------
 # ROUTES
-# -----------------------------
+# -----------------------
 @app.route('/')
 def home():
     return render_template("index.html")
@@ -61,6 +54,9 @@ def home():
 @app.route('/predict', methods=['POST'])
 def predict():
     model = load_model()
+
+    if model is None:
+        return "Model failed to load on server"
 
     if 'file' not in request.files:
         return "No file uploaded"
@@ -72,7 +68,7 @@ def predict():
     file.save(filepath)
 
     img = Image.open(filepath).convert('RGB')
-    img = img.resize((128, 128))
+    img = img.resize((224, 224))   # IMPORTANT: your model uses 224x224
 
     img_array = np.array(img) / 255.0
     img_array = np.expand_dims(img_array, axis=0)
@@ -90,5 +86,8 @@ def predict():
     )
 
 
+# -----------------------
+# ENTRY POINT
+# -----------------------
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
