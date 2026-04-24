@@ -33,7 +33,11 @@ def load_model():
     global model
     if model is None:
         download_model()
-        model = tf.keras.models.load_model(MODEL_PATH, compile=False)
+       model = tf.keras.models.load_model(
+    MODEL_PATH,
+    compile=False,
+    custom_objects={"InputLayer": tf.keras.layers.InputLayer}
+)
     return model
 
 # -----------------------------
