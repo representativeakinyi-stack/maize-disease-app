@@ -7,9 +7,10 @@ import uuid
 
 app = Flask(__name__)
 
+# Ensure static folder exists
 os.makedirs("static", exist_ok=True)
 
-# DO NOT load model at startup (prevents Railway crash)
+# Global model (lazy loaded)
 model = None
 
 def load_model():
@@ -19,6 +20,7 @@ def load_model():
     return model
 
 
+# Class labels (must match training order)
 classes = [
     "common_rust",
     "gray_leaf_spot",
@@ -26,40 +28,58 @@ classes = [
     "northern_leaf_blight"
 ]
 
+
+# Home page
 @app.route('/')
 def home():
     return render_template("index.html")
 
 
+# Prediction route
 @app.route('/predict', methods=['POST'])
 def predict():
-    model = load_model()  # safe lazy loading
+    try:
+        model = load_model()
 
-    file = request.files['file']
+        # Validate file upload
+        if 'file' not in request.files:
+            return "No file uploaded"
 
-    filename = str(uuid.uuid4()) + ".jpg"
-    filepath = os.path.join("static", filename)
-    file.save(filepath)
+        file = request.files['file']
 
-    img = Image.open(filepath).convert('RGB')
-    img = img.resize((128, 128))
+        if file.filename == '':
+            return "No file selected"
 
-    img_array = np.array(img) / 255.0
-    img_array = np.expand_dims(img_array, axis=0)
+        # Save image safely
+        filename = str(uuid.uuid4()) + ".jpg"
+        filepath = os.path.join("static", filename)
+        file.save(filepath)
 
-    prediction = model.predict(img_array)
+        # Preprocess image
+        img = Image.open(filepath).convert('RGB')
+        img = img.resize((128, 128))
 
-    predicted_class = classes[np.argmax(prediction)]
-    confidence = float(np.max(prediction) * 100)
+        img_array = np.array(img) / 255.0
+        img_array = np.expand_dims(img_array, axis=0)
 
-    return render_template(
-        "index.html",
-        prediction=predicted_class,
-        confidence=f"{confidence:.2f}",
-        image=filepath
-    )
+        # Predict
+        prediction = model.predict(img_array)
+
+        predicted_class = classes[np.argmax(prediction)]
+        confidence = float(np.max(prediction) * 100)
+
+        return render_template(
+            "index.html",
+            prediction=predicted_class,
+            confidence=f"{confidence:.2f}",
+            image=filepath
+        )
+
+    except Exception as e:
+        print("ERROR:", e)
+        return f"Prediction error: {str(e)}"
 
 
-# Railway / Gunicorn entry point (SAFE)
+# Railway / Gunicorn entry point
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
