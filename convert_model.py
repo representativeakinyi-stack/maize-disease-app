@@ -1,6 +1,11 @@
 import tensorflow as tf
 
-model = tf.keras.models.load_model("model.h5")
-model.save("model.keras")
+print("Loading model...")
 
-print("DONE: model.keras created")
+model = tf.keras.models.load_model("model.h5", compile=False)
+
+print("Saving new model...")
+
+model.save("model_fixed.keras")
+
+print("DONE: model_fixed.keras created successfully")
