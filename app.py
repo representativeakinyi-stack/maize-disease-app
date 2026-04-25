@@ -9,24 +9,28 @@ import gdown
 app = Flask(__name__)
 
 # ----------------------------
-# FOLDERS
+# CREATE STATIC FOLDER
 # ----------------------------
 os.makedirs("static", exist_ok=True)
 
 # ----------------------------
 # MODEL CONFIG (FIXED)
 # ----------------------------
-MODEL_PATH = "model_fixed.keras"
+MODEL_PATH = "model_fixed.h5"
 MODEL_URL = "https://drive.google.com/uc?id=1pBbjrT-fe52ld8gczIcAZATe5pv20lMF"
 
 model = None
 
+
+# ----------------------------
+# LOAD MODEL FUNCTION
+# ----------------------------
 def load_model():
     global model
 
     if model is None:
         try:
-            # Download model if not present
+            # Download if not exists
             if not os.path.exists(MODEL_PATH):
                 print("Downloading model from Google Drive...")
                 gdown.download(MODEL_URL, MODEL_PATH, quiet=False)
@@ -34,10 +38,10 @@ def load_model():
             print("Loading model...")
             model = tf.keras.models.load_model(MODEL_PATH, compile=False)
 
-            print("✅ MODEL LOADED SUCCESSFULLY")
+            print("MODEL LOADED SUCCESSFULLY")
 
         except Exception as e:
-            print("❌ MODEL LOAD ERROR:", e)
+            print("MODEL LOAD ERROR:", e)
             model = None
 
     return model
@@ -63,7 +67,7 @@ def home():
 
 
 # ----------------------------
-# PREDICT ROUTE (FIXED)
+# PREDICT ROUTE
 # ----------------------------
 @app.route('/predict', methods=['POST'])
 def predict():
@@ -88,7 +92,7 @@ def predict():
     try:
         # Preprocess image
         img = Image.open(filepath).convert('RGB')
-        img = img.resize((224, 224))  # IMPORTANT
+        img = img.resize((224, 224))  # IMPORTANT FIX
 
         img_array = np.array(img) / 255.0
         img_array = np.expand_dims(img_array, axis=0)
@@ -107,12 +111,12 @@ def predict():
         )
 
     except Exception as e:
-        print("❌ PREDICTION ERROR:", e)
+        print("PREDICTION ERROR:", e)
         return "Prediction error occurred"
 
 
 # ----------------------------
-# ENTRY POINT
+# RUN APP (RAILWAY USES GUNICORN)
 # ----------------------------
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
