@@ -7,35 +7,26 @@ import uuid
 
 app = Flask(__name__)
 
-# Create static folder if not exists
+# folders
 os.makedirs("static", exist_ok=True)
 
 # -----------------------
-# MODEL CONFIG
+# MODEL
 # -----------------------
-MODEL_PATH = "model_fixed.h5"
+MODEL_PATH = "model.h5"
 model = None
 
 
-# -----------------------
-# LOAD MODEL (DEBUG VERSION)
-# -----------------------
 def load_model():
     global model
 
     if model is None:
         try:
-            print("===================================")
-            print("📁 CHECKING FILES IN CONTAINER:")
-            print(os.listdir("."))
-            print("===================================")
+            print("Checking files:", os.listdir("."))
 
             if not os.path.exists(MODEL_PATH):
-                print("❌ MODEL FILE NOT FOUND:", MODEL_PATH)
+                print("❌ Model file missing")
                 return None
-
-            size = os.path.getsize(MODEL_PATH)
-            print(f"📦 MODEL FOUND | SIZE: {size} bytes")
 
             print("Loading model...")
             model = tf.keras.models.load_model(MODEL_PATH, compile=False)
@@ -43,7 +34,7 @@ def load_model():
             print("✅ MODEL LOADED SUCCESSFULLY")
 
         except Exception as e:
-            print("❌ MODEL LOAD ERROR:", str(e))
+            print("❌ MODEL ERROR:", str(e))
             model = None
 
     return model
@@ -61,16 +52,13 @@ classes = [
 
 
 # -----------------------
-# HOME ROUTE
+# ROUTES
 # -----------------------
 @app.route('/')
 def home():
     return render_template("index.html")
 
 
-# -----------------------
-# PREDICT ROUTE
-# -----------------------
 @app.route('/predict', methods=['POST'])
 def predict():
     model = load_model()
@@ -78,25 +66,19 @@ def predict():
     if model is None:
         return "Model failed to load on server"
 
-    if 'file' not in request.files:
-        return "No file uploaded"
-
     file = request.files['file']
 
-    # Save image
     filename = str(uuid.uuid4()) + ".jpg"
     filepath = os.path.join("static", filename)
     file.save(filepath)
 
     try:
-        # Preprocess image
-        img = Image.open(filepath).convert('RGB')
+        img = Image.open(filepath).convert("RGB")
         img = img.resize((224, 224))
 
         img_array = np.array(img) / 255.0
         img_array = np.expand_dims(img_array, axis=0)
 
-        # Predict
         prediction = model.predict(img_array)
 
         predicted_class = classes[np.argmax(prediction)]
@@ -110,12 +92,12 @@ def predict():
         )
 
     except Exception as e:
-        print("❌ PREDICTION ERROR:", str(e))
-        return "Error during prediction"
+        print("ERROR:", str(e))
+        return "Prediction error"
 
 
 # -----------------------
-# START APP
+# RUN
 # -----------------------
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
