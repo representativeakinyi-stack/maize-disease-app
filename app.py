@@ -7,12 +7,8 @@ import uuid
 
 app = Flask(__name__)
 
-# folders
 os.makedirs("static", exist_ok=True)
 
-# -----------------------
-# MODEL
-# -----------------------
 MODEL_PATH = "model.h5"
 model = None
 
@@ -22,27 +18,35 @@ def load_model():
 
     if model is None:
         try:
-            print("Checking files:", os.listdir("."))
+            print("\n========== DEBUG MODEL CHECK ==========")
+            print("FILES IN RAILWAY CONTAINER:")
+            print(os.listdir("."))
+            print("======================================")
 
             if not os.path.exists(MODEL_PATH):
-                print("❌ Model file missing")
+                print("❌ MODEL NOT FOUND:", MODEL_PATH)
+                return None
+
+            size = os.path.getsize(MODEL_PATH)
+            print("📦 MODEL SIZE:", size, "bytes")
+
+            if size < 10000:
+                print("❌ MODEL FILE IS TOO SMALL → INVALID / LFS POINTER")
                 return None
 
             print("Loading model...")
+
             model = tf.keras.models.load_model(MODEL_PATH, compile=False)
 
             print("✅ MODEL LOADED SUCCESSFULLY")
 
         except Exception as e:
-            print("❌ MODEL ERROR:", str(e))
+            print("❌ MODEL LOAD ERROR:", str(e))
             model = None
 
     return model
 
 
-# -----------------------
-# CLASSES
-# -----------------------
 classes = [
     "common_rust",
     "gray_leaf_spot",
@@ -51,9 +55,6 @@ classes = [
 ]
 
 
-# -----------------------
-# ROUTES
-# -----------------------
 @app.route('/')
 def home():
     return render_template("index.html")
@@ -92,12 +93,9 @@ def predict():
         )
 
     except Exception as e:
-        print("ERROR:", str(e))
+        print("❌ PREDICTION ERROR:", str(e))
         return "Prediction error"
 
 
-# -----------------------
-# RUN
-# -----------------------
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
