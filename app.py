@@ -4,7 +4,7 @@ import tensorflow as tf
 from PIL import Image
 import os
 import uuid
-import gdown
+import requests
 
 app = Flask(__name__)
 
@@ -20,15 +20,34 @@ MODEL_URL = "https://drive.google.com/uc?id=1Y9pKbUfo80mf9PQ1wblLKZONjrldkFCO"
 model = None
 
 
+# -----------------------
+# DOWNLOAD FUNCTION
+# -----------------------
+def download_model():
+    print("Downloading model from Google Drive...")
+
+    response = requests.get(MODEL_URL, stream=True)
+
+    with open(MODEL_PATH, "wb") as f:
+        for chunk in response.iter_content(chunk_size=8192):
+            if chunk:
+                f.write(chunk)
+
+    print("Download complete")
+
+
+# -----------------------
+# LOAD MODEL
+# -----------------------
 def load_model():
     global model
 
     if model is None:
         try:
-            # Download model if not present
+            print("Files in directory:", os.listdir("."))
+
             if not os.path.exists(MODEL_PATH):
-                print("Downloading model from Google Drive...")
-                gdown.download(MODEL_URL, MODEL_PATH, quiet=False)
+                download_model()
 
             print("Loading model...")
             model = tf.keras.models.load_model(MODEL_PATH, compile=False)

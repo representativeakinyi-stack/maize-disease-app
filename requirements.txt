@@ -4,3 +4,4 @@ pillow
 gdown
 gunicorn
 tensorflow==2.15.0
+requests
