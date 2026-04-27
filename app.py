@@ -8,29 +8,24 @@ import gdown
 
 app = Flask(__name__)
 
-# ----------------------------
-# CREATE STATIC FOLDER
-# ----------------------------
+# Create static folder
 os.makedirs("static", exist_ok=True)
 
-# ----------------------------
-# MODEL CONFIG (FIXED)
-# ----------------------------
+# -----------------------
+# MODEL CONFIG
+# -----------------------
 MODEL_PATH = "model_fixed.h5"
-MODEL_URL = "https://drive.google.com/uc?id=1pBbjrT-fe52ld8gczIcAZATe5pv20lMF"
+MODEL_URL = "https://drive.google.com/uc?id=1Y9pKbUfo80mf9PQ1wblLKZONjrldkFCO"
 
 model = None
 
 
-# ----------------------------
-# LOAD MODEL FUNCTION
-# ----------------------------
 def load_model():
     global model
 
     if model is None:
         try:
-            # Download if not exists
+            # Download model if not present
             if not os.path.exists(MODEL_PATH):
                 print("Downloading model from Google Drive...")
                 gdown.download(MODEL_URL, MODEL_PATH, quiet=False)
@@ -41,15 +36,15 @@ def load_model():
             print("MODEL LOADED SUCCESSFULLY")
 
         except Exception as e:
-            print("MODEL LOAD ERROR:", e)
+            print("MODEL LOAD ERROR:", str(e))
             model = None
 
     return model
 
 
-# ----------------------------
-# CLASS LABELS
-# ----------------------------
+# -----------------------
+# CLASSES
+# -----------------------
 classes = [
     "common_rust",
     "gray_leaf_spot",
@@ -58,17 +53,14 @@ classes = [
 ]
 
 
-# ----------------------------
-# HOME ROUTE
-# ----------------------------
+# -----------------------
+# ROUTES
+# -----------------------
 @app.route('/')
 def home():
     return render_template("index.html")
 
 
-# ----------------------------
-# PREDICT ROUTE
-# ----------------------------
 @app.route('/predict', methods=['POST'])
 def predict():
     model = load_model()
@@ -81,10 +73,7 @@ def predict():
 
     file = request.files['file']
 
-    if file.filename == '':
-        return "No selected file"
-
-    # Save image
+    # Save uploaded image
     filename = str(uuid.uuid4()) + ".jpg"
     filepath = os.path.join("static", filename)
     file.save(filepath)
@@ -92,12 +81,12 @@ def predict():
     try:
         # Preprocess image
         img = Image.open(filepath).convert('RGB')
-        img = img.resize((224, 224))  # IMPORTANT FIX
+        img = img.resize((224, 224))
 
         img_array = np.array(img) / 255.0
         img_array = np.expand_dims(img_array, axis=0)
 
-        # Prediction
+        # Predict
         prediction = model.predict(img_array)
 
         predicted_class = classes[np.argmax(prediction)]
@@ -111,12 +100,12 @@ def predict():
         )
 
     except Exception as e:
-        print("PREDICTION ERROR:", e)
-        return "Prediction error occurred"
+        print("PREDICTION ERROR:", str(e))
+        return "Error during prediction"
 
 
-# ----------------------------
-# RUN APP (RAILWAY USES GUNICORN)
-# ----------------------------
+# -----------------------
+# ENTRY POINT
+# -----------------------
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
