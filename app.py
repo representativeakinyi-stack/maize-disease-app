@@ -4,42 +4,37 @@ import tensorflow as tf
 from PIL import Image
 import os
 import uuid
+import gdown
 
 app = Flask(__name__)
 
-# -------------------------
-# FOLDERS
-# -------------------------
 os.makedirs("static", exist_ok=True)
 
-# -------------------------
-# MODEL
-# -------------------------
 MODEL_PATH = "model.keras"
+MODEL_URL = "https://drive.google.com/uc?id=11CCmoqktYGezTq46o10nzgwInF3s4FQ5"
 
 print("\n========== MODEL INITIALIZATION ==========")
-print("Files in deployment:", os.listdir("."))
+print("Files:", os.listdir("."))
 
 model = None
 
-if os.path.exists(MODEL_PATH):
-    try:
-        print("Model found")
-        print("Model size:", os.path.getsize(MODEL_PATH), "bytes")
+try:
+    # Download model if not present
+    if not os.path.exists(MODEL_PATH):
+        print("⬇️ Downloading model from Google Drive...")
+        gdown.download(MODEL_URL, MODEL_PATH, quiet=False)
 
-        model = tf.keras.models.load_model(MODEL_PATH)
+    print("📦 Model size:", os.path.getsize(MODEL_PATH), "bytes")
 
-        print("✅ MODEL LOADED SUCCESSFULLY")
+    model = tf.keras.models.load_model(MODEL_PATH)
 
-    except Exception as e:
-        print("❌ MODEL LOAD ERROR:", str(e))
-        model = None
-else:
-    print("❌ MODEL FILE NOT FOUND")
+    print("✅ MODEL LOADED SUCCESSFULLY")
 
-# -------------------------
-# CLASS LABELS
-# -------------------------
+except Exception as e:
+    print("❌ MODEL LOAD ERROR:", str(e))
+    model = None
+
+
 classes = [
     "common_rust",
     "gray_leaf_spot",
@@ -47,9 +42,7 @@ classes = [
     "northern_leaf_blight"
 ]
 
-# -------------------------
-# ROUTES
-# -------------------------
+
 @app.route('/')
 def home():
     return render_template("index.html")
@@ -94,8 +87,5 @@ def predict():
         return "Prediction error"
 
 
-# -------------------------
-# RUN
-# -------------------------
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
