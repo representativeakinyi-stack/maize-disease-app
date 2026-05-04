@@ -8,30 +8,26 @@ import uuid
 app = Flask(__name__)
 
 # -------------------------
-# CREATE STATIC FOLDER
+# FOLDERS
 # -------------------------
 os.makedirs("static", exist_ok=True)
 
 # -------------------------
-# MODEL PATH
+# MODEL
 # -------------------------
-MODEL_PATH = "model.h5"
+MODEL_PATH = "model.keras"
 
-# -------------------------
-# LOAD MODEL AT STARTUP
-# -------------------------
 print("\n========== MODEL INITIALIZATION ==========")
-print("Checking deployed files...")
-print(os.listdir("."))
+print("Files in deployment:", os.listdir("."))
 
 model = None
 
 if os.path.exists(MODEL_PATH):
     try:
-        print("Model file found.")
+        print("Model found")
         print("Model size:", os.path.getsize(MODEL_PATH), "bytes")
 
-        model = tf.keras.models.load_model(MODEL_PATH, compile=False)
+        model = tf.keras.models.load_model(MODEL_PATH)
 
         print("✅ MODEL LOADED SUCCESSFULLY")
 
@@ -39,8 +35,7 @@ if os.path.exists(MODEL_PATH):
         print("❌ MODEL LOAD ERROR:", str(e))
         model = None
 else:
-    print("❌ MODEL FILE NOT FOUND IN DEPLOYMENT")
-
+    print("❌ MODEL FILE NOT FOUND")
 
 # -------------------------
 # CLASS LABELS
@@ -52,18 +47,14 @@ classes = [
     "northern_leaf_blight"
 ]
 
-
 # -------------------------
-# HOME ROUTE
+# ROUTES
 # -------------------------
 @app.route('/')
 def home():
     return render_template("index.html")
 
 
-# -------------------------
-# PREDICT ROUTE
-# -------------------------
 @app.route('/predict', methods=['POST'])
 def predict():
 
@@ -75,20 +66,17 @@ def predict():
 
     file = request.files['file']
 
-    # Save image
     filename = str(uuid.uuid4()) + ".jpg"
     filepath = os.path.join("static", filename)
     file.save(filepath)
 
     try:
-        # Preprocess image
         img = Image.open(filepath).convert("RGB")
         img = img.resize((224, 224))
 
         img_array = np.array(img) / 255.0
         img_array = np.expand_dims(img_array, axis=0)
 
-        # Prediction
         prediction = model.predict(img_array)
 
         predicted_class = classes[np.argmax(prediction)]
@@ -107,7 +95,7 @@ def predict():
 
 
 # -------------------------
-# RUN APP
+# RUN
 # -------------------------
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)

@@ -1,39 +1,88 @@
 import tensorflow as tf
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense
-from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from tensorflow.keras import layers, models
+import os
 
-# Load dataset
-train_datagen = ImageDataGenerator(rescale=1./255)
+# ---------------------------
+# DATASET PATH
+# ---------------------------
+DATASET_PATH = "dataset"
 
-train_data = train_datagen.flow_from_directory(
-    "dataset",
-    target_size=(224, 224)
-    batch_size=32,
-    class_mode="categorical"
+IMG_SIZE = (224, 224)
+BATCH_SIZE = 32
+
+# ---------------------------
+# LOAD DATASET
+# ---------------------------
+train_ds = tf.keras.utils.image_dataset_from_directory(
+    DATASET_PATH,
+    validation_split=0.2,
+    subset="training",
+    seed=123,
+    image_size=IMG_SIZE,
+    batch_size=BATCH_SIZE
 )
 
-# Build CNN model
-model = Sequential([
-    Conv2D(32, (3,3), activation='relu', input_shape=(128,128,3)),
-    MaxPooling2D(2,2),
+val_ds = tf.keras.utils.image_dataset_from_directory(
+    DATASET_PATH,
+    validation_split=0.2,
+    subset="validation",
+    seed=123,
+    image_size=IMG_SIZE,
+    batch_size=BATCH_SIZE
+)
 
-    Conv2D(64, (3,3), activation='relu'),
-    MaxPooling2D(2,2),
+class_names = train_ds.class_names
+print("Classes:", class_names)
 
-    Flatten(),
-    Dense(128, activation='relu'),
-    Dense(4, activation='softmax')
+# Optimize performance
+AUTOTUNE = tf.data.AUTOTUNE
+train_ds = train_ds.cache().shuffle(1000).prefetch(buffer_size=AUTOTUNE)
+val_ds = val_ds.cache().prefetch(buffer_size=AUTOTUNE)
+
+# ---------------------------
+# MODEL ARCHITECTURE
+# ---------------------------
+model = models.Sequential([
+    layers.Rescaling(1./255, input_shape=(224, 224, 3)),
+
+    layers.Conv2D(32, (3,3), activation='relu'),
+    layers.MaxPooling2D(),
+
+    layers.Conv2D(64, (3,3), activation='relu'),
+    layers.MaxPooling2D(),
+
+    layers.Conv2D(128, (3,3), activation='relu'),
+    layers.MaxPooling2D(),
+
+    layers.Flatten(),
+    layers.Dense(128, activation='relu'),
+    layers.Dropout(0.5),
+
+    layers.Dense(len(class_names), activation='softmax')
 ])
 
+# ---------------------------
+# COMPILE MODEL
+# ---------------------------
 model.compile(
     optimizer='adam',
-    loss='categorical_crossentropy',
+    loss='sparse_categorical_crossentropy',
     metrics=['accuracy']
 )
 
-# Train model
-model.fit(train_data, epochs=5)
+# ---------------------------
+# TRAIN MODEL
+# ---------------------------
+EPOCHS = 10
 
-# Save model
-model.save("model.h5")
+history = model.fit(
+    train_ds,
+    validation_data=val_ds,
+    epochs=EPOCHS
+)
+
+# ---------------------------
+# SAVE MODEL
+# ---------------------------
+model.save("model.keras")
+print("✅ MODEL TRAINED AND SAVED AS model.keras")
